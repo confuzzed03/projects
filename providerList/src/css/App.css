@@ -1,0 +1,33 @@
+.jumbotron {
+  background-color: white;
+  padding-bottom: 0;
+  margin-bottom: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+th i {
+  padding-left: 10px;
+}
+
+th {
+  cursor: pointer;
+}
+
+.table thead th {
+  vertical-align: middle;
+  z-index: 1;
+  position: sticky;
+  top: 0;
+}
+
+tbody {
+  height: 230px;
+  overflow-y: auto;
+}
+
+#providerList {
+  height: 50%;
+  overflow-y: auto;
+  margin-bottom: 20px;
+}
