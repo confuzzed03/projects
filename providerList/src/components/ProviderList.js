@@ -1,4 +1,5 @@
 import React from 'react';
+// import CreateProvider from './CreateProvider';
 import providers from '../db/providers.json';
 
 class ProviderList extends React.Component {
@@ -21,7 +22,7 @@ class ProviderList extends React.Component {
 
     this.state = {
       filteredProviders: providers,
-      fields
+      fields: fields
     };
   }
 
@@ -50,18 +51,12 @@ class ProviderList extends React.Component {
       .sort((a, b) => {
         let result = 0;
 
-        if (a[field.fieldName] > b[field.fieldName]) {
-          // ascending result
-          result = 1;
-        } else if (a[field.fieldName] < b[field.fieldName]) {
-          // descending result
-          result = -1;
-        }
+        // ascending, descending result respectively
+        if (a[field.fieldName] > b[field.fieldName]) result = 1;
+        else if (a[field.fieldName] < b[field.fieldName]) result = -1;
 
         // toggle indicates switch order
-        if (field.toggle) {
-          result *= -1;
-        }
+        if (field.toggle) result *= -1;
 
         //return field.toggle && a[field.fieldName] > b[field.fieldName] ? 1 : -1;
         return result;
@@ -74,7 +69,7 @@ class ProviderList extends React.Component {
 
       if (index === fieldIndex) {
         // Change sorting icon based on ascending/descending
-        className = field.toggle === true ? 'fa-sort-up' : 'fa-sort-down';
+        className = field.toggle ? 'fa-sort-up' : 'fa-sort-down';
         toggle = !field.toggle;
       }
       // reset last sorted field
@@ -115,7 +110,14 @@ class ProviderList extends React.Component {
               );
             })}
 
-            <th />
+            <th style={{ paddingRight: '13px' }}>
+              <div className="text-center">
+                <i
+                  className="fas fa-trash-alt text-center"
+                  style={{ float: 'right' }}
+                ></i>
+              </div>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -138,12 +140,12 @@ class ProviderList extends React.Component {
         </td>
 
         {/* Populate provider data */}
-        {this.state.fields.map(field => {
+        {this.state.fields.map(({ headerName, fieldName }) => {
           return (
-            <td key={provider.email_address + field.headerName}>
-              {field.fieldName !== 'email_address'
-                ? this.convertToCamelCase(provider[field.fieldName])
-                : provider[field.fieldName]}
+            <td key={provider.email_address + headerName}>
+              {fieldName !== 'email_address'
+                ? this.convertToCamelCase(provider[fieldName])
+                : provider[fieldName]}
             </td>
           );
         })}
@@ -154,9 +156,7 @@ class ProviderList extends React.Component {
               type="button"
               className="close"
               aria-label="Close"
-              onClick={() => {
-                this.removeIndividual(provider);
-              }}
+              onClick={() => this.removeIndividual(provider)}
             >
               <span aria-hidden="true">&times;</span>
             </button>

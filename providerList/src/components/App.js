@@ -1,7 +1,8 @@
 import React from 'react';
 import SearchBar from './SearchBar';
 import ProviderList from './ProviderList';
-import ActionBar from './ActionBar';
+import CreateProvider from './CreateProvider';
+import RemoveProvider from './RemoveProvider';
 import '../css/App.css';
 
 class App extends React.Component {
@@ -27,9 +28,12 @@ class App extends React.Component {
             <ProviderList />
           </div>
         </div>
-        <div className="row">
+        <div id="ActionBar" className="row">
           <div className="col">
-            <ActionBar />
+            <div className="text-right">
+              <CreateProvider />
+              <RemoveProvider />
+            </div>
           </div>
         </div>
       </div>

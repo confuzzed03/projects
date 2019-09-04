@@ -31,3 +31,7 @@ tbody {
   overflow-y: auto;
   margin-bottom: 20px;
 }
+
+#ActionBar {
+  margin-bottom: 20px;
+}

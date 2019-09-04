@@ -1,25 +1,22 @@
-import React from 'react';
-import { Field, reduxForm } from 'redux-form';
+// import React from 'react';
+// import CreateProvider from './CreateProvider';
 
-let ActionBar = () => {
-  const createProvider = () => {};
+// let ActionBar = () => {
+//   return (
+//     <div className="text-right">
+//       <button
+//         className="btn btn-lg btn-primary"
+//         style={{ marginRight: '10px' }}
+//         onClick={() => {
+//           CreateProvider();
+//         }}
+//       >
+//         Create
+//       </button>
+//       <button className="btn btn-lg btn-danger">Remove</button>
+//       <CreateProvider />
+//     </div>
+//   );
+// };
 
-  return (
-    <div className="text-right">
-      <button
-        className="btn btn-lg btn-primary"
-        style={{ marginRight: '10px' }}
-      >
-        Create
-      </button>
-      <button className="btn btn-lg btn-danger">Remove</button>
-    </div>
-  );
-};
-
-ActionBar = reduxForm({
-  // a unique name for the form
-  form: 'create-provider'
-})(ActionBar);
-
-export default ActionBar;
+// export default ActionBar;
