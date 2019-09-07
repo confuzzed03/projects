@@ -1,6 +1,6 @@
 #createProviderModal .form-control:valid {
   background-image: none;
-  border-color: #ced4da;
+  /* border-color: #ced4da; */
 }
 
 #createProviderBtn {

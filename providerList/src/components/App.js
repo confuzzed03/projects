@@ -1,11 +1,15 @@
 import React from 'react';
 import SearchBar from './SearchBar';
 import ProviderList from './ProviderList';
-import CreateProvider from './CreateProvider';
-import RemoveProvider from './RemoveProvider';
+// import CreateProvider from './CreateProvider';
+// import RemoveProvider from './RemoveProvider';
 import '../css/App.css';
 
 class App extends React.Component {
+  state = {
+    newProvider: null
+  };
+
   render() {
     return (
       <div className="container" style={{ height: '100vh' }}>
@@ -23,19 +27,7 @@ class App extends React.Component {
             <SearchBar />
           </div>
         </div>
-        <div id="providerList" className="row">
-          <div className="col">
-            <ProviderList />
-          </div>
-        </div>
-        <div id="ActionBar" className="row">
-          <div className="col">
-            <div className="text-right">
-              <CreateProvider />
-              <RemoveProvider />
-            </div>
-          </div>
-        </div>
+        <ProviderList />
       </div>
     );
   }

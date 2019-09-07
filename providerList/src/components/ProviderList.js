@@ -1,19 +1,20 @@
 import React from 'react';
-// import CreateProvider from './CreateProvider';
+import CreateProvider from './CreateProvider';
+import RemoveProvider from './RemoveProvider';
+import camelCase from '../utility/camelCase';
 import providers from '../db/providers.json';
+import AlertComponent from './Alert';
 
 class ProviderList extends React.Component {
   constructor(props) {
     super(props);
-
     let fields = [];
-
     // Extract fields from data as headers, remove underlines and camel case
     if (providers.length) {
       fields = Object.keys(providers[0]).map(field => {
         return {
           fieldName: field,
-          headerName: this.convertToCamelCase(field),
+          headerName: camelCase(field),
           className: 'fa-sort',
           toggle: false
         };
@@ -34,11 +35,25 @@ class ProviderList extends React.Component {
     });
   };
 
-  // converts data field name to camel case form
-  convertToCamelCase = field => {
-    return field.replace('_', ' ').replace(/\w\S*/g, function(txt) {
-      return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
-    });
+  handleCreateProvider = (newProvider, alert) => {
+    const defaultAlert = {
+      showAlert: false,
+      alertMessage: '',
+      alertVariant: ''
+    };
+    this.setState(
+      {
+        showAlert: alert.show,
+        alertMessage: alert.message,
+        alertVariant: alert.variant,
+        filteredProviders: [newProvider, ...this.state.filteredProviders]
+      },
+      () => {
+        window.setTimeout(() => {
+          this.setState(defaultAlert);
+        }, 2000);
+      }
+    );
   };
 
   // table header on-click handler for sorting by field
@@ -46,7 +61,7 @@ class ProviderList extends React.Component {
     let field = this.state.fields[fieldIndex];
 
     // Sort providers by selected field
-    let newFilteredProviders = this.state.filteredProviders
+    let filteredProviders = this.state.filteredProviders
       .slice()
       .sort((a, b) => {
         let result = 0;
@@ -77,8 +92,8 @@ class ProviderList extends React.Component {
     });
 
     this.setState({
-      fields: fields,
-      filteredProviders: newFilteredProviders
+      fields,
+      filteredProviders
     });
   };
 
@@ -87,46 +102,65 @@ class ProviderList extends React.Component {
     if (!this.state.fields) return <table></table>;
 
     return (
-      <table className="table table-hover">
-        <thead className="thead-dark">
-          <tr>
-            <th className="text-center">
-              <div className="checkbox text-center">
-                <input type="checkbox" />
-              </div>
-            </th>
+      <>
+        <AlertComponent
+          show={this.state.showAlert}
+          message={this.state.alertMessage}
+          variant={this.state.alertVariant}
+        ></AlertComponent>
+        <div id="providerList" className="row">
+          <div className="col">
+            <table className="table table-hover">
+              <thead className="thead-dark">
+                <tr>
+                  <th className="text-center">
+                    <div className="checkbox text-center">
+                      <input type="checkbox" />
+                    </div>
+                  </th>
 
-            {/* Populate table headers */}
-            {this.state.fields.map((field, index) => {
-              return (
-                <th
-                  scope="col"
-                  key={field.fieldName}
-                  onClick={() => this.sortByField(index)}
-                >
-                  {field.headerName}
-                  <i className={`fas ${field.className}`}></i>
-                </th>
-              );
-            })}
+                  {/* Populate table headers */}
+                  {this.state.fields.map((field, index) => {
+                    return (
+                      <th
+                        scope="col"
+                        key={field.fieldName}
+                        onClick={() => this.sortByField(index)}
+                      >
+                        {field.headerName}
+                        <i className={`fas ${field.className}`}></i>
+                      </th>
+                    );
+                  })}
 
-            <th style={{ paddingRight: '13px' }}>
-              <div className="text-center">
-                <i
-                  className="fas fa-trash-alt text-center"
-                  style={{ float: 'right' }}
-                ></i>
-              </div>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {/* Populate table rows for providers */}
-          {this.state.filteredProviders.map(provider => {
-            return this.renderProvider(provider);
-          })}
-        </tbody>
-      </table>
+                  <th style={{ paddingRight: '13px' }}>
+                    <div className="text-center">
+                      <i
+                        className="fas fa-trash-alt text-center"
+                        style={{ float: 'right' }}
+                      ></i>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* Populate table rows for providers */}
+                {this.state.filteredProviders.map(provider => {
+                  return this.renderProvider(provider);
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div id="ActionBar" className="row">
+          <div className="col">
+            <div className="text-right">
+              <CreateProvider formSubmitCallback={this.handleCreateProvider} />
+              <RemoveProvider />
+            </div>
+          </div>
+        </div>
+      </>
     );
   }
 
@@ -144,7 +178,7 @@ class ProviderList extends React.Component {
           return (
             <td key={provider.email_address + headerName}>
               {fieldName !== 'email_address'
-                ? this.convertToCamelCase(provider[fieldName])
+                ? camelCase(provider[fieldName])
                 : provider[fieldName]}
             </td>
           );
