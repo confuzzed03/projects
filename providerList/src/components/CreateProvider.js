@@ -35,17 +35,6 @@ class CreateProvider extends React.Component {
     });
   };
 
-  onChange = e => {
-    const key = e.target.name;
-    this.setState({
-      ...this.state,
-      [key]: {
-        ...this.state[key],
-        value: e.target.value
-      }
-    });
-  };
-
   onSubmit = e => {
     e.preventDefault();
     // reset states before the validation procedure is run.
@@ -60,14 +49,24 @@ class CreateProvider extends React.Component {
         practice_name: camelCase(this.state.practice.value)
       };
       providerSvc
-        .post('/providers/create', newProvider)
-        .then(() => {
-          this.setState({ ...this.state, modalShow: false, validated: false });
-          this.props.formSubmitCallback(newProvider, {
-            show: true,
-            message: 'New provider has successfully been created!',
-            variant: 'success'
-          });
+        .post('/create', newProvider)
+        .then(response => {
+          if (response.data.error) {
+            let email = { ...this.state.email };
+            email.isValid = false;
+            email.message = response.data.error;
+            this.setState({ email });
+          } else {
+            this.setState({
+              ...this.state,
+              modalShow: false,
+              validated: false
+            });
+            this.props.formSubmitCallback({
+              message: 'New provider has successfully been created!',
+              variant: 'success'
+            });
+          }
         })
         .catch(error => {
           alert(error);
@@ -198,10 +197,8 @@ class CreateProvider extends React.Component {
                   <Form.Control
                     required
                     type="text"
-                    placeholder="First name"
                     name="firstName"
-                    value={firstName.value}
-                    onChange={this.onChange}
+                    placeholder="First name"
                     onBlur={this.onBlur}
                     isInvalid={!firstName.isValid}
                   />
@@ -212,12 +209,10 @@ class CreateProvider extends React.Component {
                 <Form.Group className="col-6" controlId="lastName">
                   <Form.Label>Last name</Form.Label>
                   <Form.Control
-                    name="lastName"
                     required
+                    name="lastName"
                     type="text"
                     placeholder="Last name"
-                    value={lastName.value}
-                    onChange={this.onChange}
                     onBlur={this.onBlur}
                     isInvalid={!lastName.isValid}
                   />
@@ -234,9 +229,6 @@ class CreateProvider extends React.Component {
                     type="email"
                     name="email"
                     placeholder="Enter email"
-                    className={!email.isValid ? 'is-invalid' : ''}
-                    value={email.value}
-                    onChange={this.onChange}
                     onBlur={this.onBlur}
                     isInvalid={!email.isValid}
                   />
@@ -257,8 +249,6 @@ class CreateProvider extends React.Component {
                     type="text"
                     name="specialty"
                     placeholder="Specialty"
-                    value={specialty.value}
-                    onChange={this.onChange}
                     onBlur={this.onBlur}
                     isInvalid={!specialty.isValid}
                   />
@@ -274,8 +264,6 @@ class CreateProvider extends React.Component {
                     type="text"
                     name="practice"
                     placeholder="Practice"
-                    value={practice.value}
-                    onChange={this.onChange}
                     onBlur={this.onBlur}
                     isInvalid={!practice.isValid}
                   />

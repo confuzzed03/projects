@@ -1,59 +1,117 @@
 import React from 'react';
+import SearchBar from './SearchBar';
 import CreateProvider from './CreateProvider';
 import RemoveProvider from './RemoveProvider';
-import camelCase from '../utility/camelCase';
-import providers from '../db/providers.json';
 import AlertComponent from './Alert';
+import providerSvc from '../api/providerSvc';
+import camelCase from '../utility/camelCase';
 
 class ProviderList extends React.Component {
   constructor(props) {
     super(props);
-    let fields = [];
-    // Extract fields from data as headers, remove underlines and camel case
-    if (providers.length) {
-      fields = Object.keys(providers[0]).map(field => {
-        return {
-          fieldName: field,
-          headerName: camelCase(field),
-          className: 'fa-sort',
-          toggle: false
-        };
-      });
-    }
-
-    this.state = {
-      filteredProviders: providers,
-      fields: fields
-    };
+    this.getProviders();
+    this.state = { alert: { show: false } };
   }
 
-  removeIndividual = deletedProvider => {
-    this.setState({
-      filteredProviders: this.state.filteredProviders.filter(provider => {
-        return provider !== deletedProvider;
+  getProviders = () => {
+    providerSvc
+      .get('/')
+      .then(response => {
+        let fields = [];
+        // Extract fields from data as headers, remove underlines and camel case
+        if (response.data.length) {
+          fields = Object.keys(response.data[0])
+            .filter(field => {
+              return field !== '_id' && field !== '__v' ? true : false;
+            })
+            .map(field => {
+              return {
+                fieldName: field,
+                headerName: camelCase(field),
+                className: 'fa-sort',
+                toggle: false
+              };
+            });
+        }
+
+        this.setState({
+          fields: fields,
+          providers: response.data,
+          filteredProviders: response.data
+        });
       })
+      .catch(error => {
+        alert(error);
+      });
+  };
+
+  removeIndividual = deletedProvider => {
+    const address = '/' + deletedProvider._id + '/delete';
+    providerSvc
+      .delete(address)
+      .then(() => {
+        const providers = this.state.providers.filter(provider => {
+          return provider !== deletedProvider;
+        });
+        this.setState({
+          providers,
+          filteredProviders: providers
+        });
+      })
+      .catch(() => {
+        this.showAlert({
+          alertMessage: 'Failed to remove provider!',
+          alertVariant: 'danger'
+        });
+      });
+  };
+
+  handleCreateProvider = alert => {
+    this.getProviders();
+    this.showAlert(alert);
+  };
+
+  showAlert = alert => {
+    const defaultAlert = {
+      show: false,
+      message: '',
+      variant: ''
+    };
+    alert.show = true;
+    this.setState({ alert }, () => {
+      window.setTimeout(() => {
+        this.setState({ alert: defaultAlert });
+      }, 3000);
     });
   };
 
-  handleCreateProvider = (newProvider, alert) => {
-    const defaultAlert = {
-      showAlert: false,
-      alertMessage: '',
-      alertVariant: ''
-    };
-    this.setState(
-      {
-        showAlert: alert.show,
-        alertMessage: alert.message,
-        alertVariant: alert.variant,
-        filteredProviders: [newProvider, ...this.state.filteredProviders]
-      },
-      () => {
-        window.setTimeout(() => {
-          this.setState(defaultAlert);
-        }, 2000);
-      }
-    );
+  sortBySearch = searchTerm => {
+    // Sort providers by selected field
+    const filteredProviders = this.state.providers.slice().filter(provider => {
+      // return Object.values(provider).indexOf(searchTerm) > -1;
+      let result = false;
+      Object.values(provider).forEach(value => {
+        if (
+          typeof value === 'string' &&
+          value.toLowerCase().includes(searchTerm)
+        ) {
+          result = true;
+          return;
+        }
+      });
+      return result;
+    });
+
+    const fields = this.state.fields.map(field => {
+      field.toggle = false;
+      field.className = 'fa-sort';
+      return field;
+    });
+
+    this.setState({
+      fields,
+      filteredProviders
+    });
   };
 
   // table header on-click handler for sorting by field
@@ -99,15 +157,34 @@ class ProviderList extends React.Component {
 
   render() {
     // return an empty table if no provider data is given
-    if (!this.state.fields) return <table></table>;
+    let tableHeaders, tableBody;
+    if (this.state.fields) {
+      tableHeaders = this.state.fields.map((field, index) => {
+        return (
+          <th
+            scope="col"
+            key={field.fieldName}
+            onClick={() => this.sortByField(index)}
+          >
+            {field.headerName}
+            <i className={`fas ${field.className}`}></i>
+          </th>
+        );
+      });
+
+      tableBody = this.state.filteredProviders.map(provider => {
+        return this.renderProvider(provider);
+      });
+    }
 
     return (
       <>
-        <AlertComponent
-          show={this.state.showAlert}
-          message={this.state.alertMessage}
-          variant={this.state.alertVariant}
-        ></AlertComponent>
+        <div className="row">
+          <div className="col">
+            <SearchBar searchCallback={this.sortBySearch} />
+          </div>
+        </div>
+        <AlertComponent alert={this.state.alert}></AlertComponent>
         <div id="providerList" className="row">
           <div className="col">
             <table className="table table-hover">
@@ -120,21 +197,10 @@ class ProviderList extends React.Component {
                   </th>
 
                   {/* Populate table headers */}
-                  {this.state.fields.map((field, index) => {
-                    return (
-                      <th
-                        scope="col"
-                        key={field.fieldName}
-                        onClick={() => this.sortByField(index)}
-                      >
-                        {field.headerName}
-                        <i className={`fas ${field.className}`}></i>
-                      </th>
-                    );
-                  })}
+                  {tableHeaders}
 
                   <th style={{ paddingRight: '13px' }}>
-                    <div className="text-center">
+                    <div className="text-center" style={{ cursor: 'default' }}>
                       <i
                         className="fas fa-trash-alt text-center"
                         style={{ float: 'right' }}
@@ -145,9 +211,7 @@ class ProviderList extends React.Component {
               </thead>
               <tbody>
                 {/* Populate table rows for providers */}
-                {this.state.filteredProviders.map(provider => {
-                  return this.renderProvider(provider);
-                })}
+                {tableBody}
               </tbody>
             </table>
           </div>
@@ -166,7 +230,7 @@ class ProviderList extends React.Component {
 
   renderProvider = provider => {
     return (
-      <tr key={provider.email_address}>
+      <tr key={provider._id}>
         <td>
           <div className="checkbox text-center">
             <input type="checkbox" />
@@ -176,11 +240,7 @@ class ProviderList extends React.Component {
         {/* Populate provider data */}
         {this.state.fields.map(({ headerName, fieldName }) => {
           return (
-            <td key={provider.email_address + headerName}>
-              {fieldName !== 'email_address'
-                ? camelCase(provider[fieldName])
-                : provider[fieldName]}
-            </td>
+            <td key={provider._id + '-' + headerName}>{provider[fieldName]}</td>
           );
         })}
 
