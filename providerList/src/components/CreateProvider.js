@@ -86,8 +86,6 @@ class CreateProvider extends React.Component {
   };
 
   checkInput = (input, isAlpha = true) => {
-    if (!input) return '';
-
     let result = { ...input, value: input.value };
     if (!isAlpha) {
       if (!validator.isAlphanumeric(input.value)) {

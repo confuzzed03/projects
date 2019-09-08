@@ -88,13 +88,9 @@ class ProviderList extends React.Component {
   sortBySearch = searchTerm => {
     // Sort providers by selected field
     const filteredProviders = this.state.providers.slice().filter(provider => {
-      // return Object.values(provider).indexOf(searchTerm) > -1;
       let result = false;
-      Object.values(provider).forEach(value => {
-        if (
-          typeof value === 'string' &&
-          value.toLowerCase().includes(searchTerm)
-        ) {
+      this.state.fields.forEach(field => {
+        if (provider[field.fieldName].toLowerCase().includes(searchTerm)) {
           result = true;
           return;
         }
@@ -167,7 +163,7 @@ class ProviderList extends React.Component {
             onClick={() => this.sortByField(index)}
           >
             {field.headerName}
-            <i className={`fas ${field.className}`}></i>
+            <i className={'fas ' + field.className}></i>
           </th>
         );
       });
