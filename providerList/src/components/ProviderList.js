@@ -1,6 +1,5 @@
 import React from 'react';
 import { Button } from 'react-bootstrap';
-import SearchBar from './SearchBar';
 import CreateProvider from './CreateProvider';
 import AlertComponent from './Alert';
 import providerSvc from '../api/providerSvc';
@@ -9,27 +8,38 @@ import camelCase from '../utility/camelCase';
 class ProviderList extends React.Component {
   constructor(props) {
     super(props);
-    this.getProviders();
+
+    // hide alert, initialize list of ID's to remove, select all value, and search term
     this.state = {
       alert: { show: false },
       removalList: [],
       checkAll: false,
       searchTerm: ''
     };
+    // retrieve providers from service
+    this.getProviders();
   }
 
   getProviders = () => {
     providerSvc
       .get('/')
       .then(response => {
+        // if no providers, show alert
+        if (!response.data.length)
+          this.showAlert({
+            message: 'No providers to show',
+            variant: 'warning'
+          });
+
         let fields = [];
-        // Extract fields from data as headers, remove underlines and camel case
+        // Extract fields from data as headers except for default mongoDB fields
         if (response.data.length) {
           fields = Object.keys(response.data[0])
             .filter(field => {
               return field !== '_id' && field !== '__v' ? true : false;
             })
             .map(field => {
+              // remove underlines and camel case fields
               return {
                 fieldName: field,
                 headerName: camelCase(field),
@@ -39,14 +49,15 @@ class ProviderList extends React.Component {
             });
         }
 
-        const filteredProviders = this.filterProvidersBySearch(
-          this.state.searchTerm,
-          response.data
-        );
+        // filter by search term on providers
+        const filteredProviders = this.filterProvidersBySearch(response.data);
+
+        // providers holds original copy of providers
+        // filteredProviders is the manipulated version of providers via sorts and searches
         this.setState({
-          fields: fields,
-          providers: response.data,
-          filteredProviders
+          fields,
+          filteredProviders,
+          providers: response.data
         });
       })
       .catch(error => {
@@ -54,24 +65,25 @@ class ProviderList extends React.Component {
       });
   };
 
-  removeIndividual = deletedProvider => {
-    const address = '/' + deletedProvider._id + '/delete';
+  removeIndividual = deletedId => {
+    const address = '/' + deletedId + '/delete';
+    // call delete service to remove provider
     providerSvc
       .delete(address)
       .then(() => {
+        // remove deleted provider from state
         const providers = this.state.providers.filter(provider => {
-            return provider !== deletedProvider;
+            return provider._id !== deletedId;
           }),
-          filteredProviders = this.filterProvidersBySearch(
-            this.state.searchTerm,
-            providers
-          );
+          // filter by search term on providers
+          filteredProviders = this.filterProvidersBySearch(providers);
         this.setState({
           providers,
           filteredProviders
         });
       })
       .catch(() => {
+        // service failed, show alert
         this.showAlert({
           message: 'Failed to remove provider!',
           variant: 'danger'
@@ -79,20 +91,28 @@ class ProviderList extends React.Component {
       });
   };
 
-  handleCreateProvider = alert => {
+  handleCreateProvider = () => {
+    // retrieve providers and show success alert
     this.getProviders();
-    this.showAlert(alert);
+    this.showAlert({
+      message: 'New provider has successfully been created!',
+      variant: 'success'
+    });
   };
 
   handleCheckbox = (index, event) => {
     let filteredProviders = [...this.state.filteredProviders];
     if (index >= 0) {
+      // update provider's checkbox selection
       filteredProviders[index].checked = event.target.checked;
       const removalList = [...this.state.removalList],
         removalIndex = removalList.indexOf(filteredProviders[index]._id);
+      // removalList holds ID's of providers to remove
       if (removalIndex !== -1) {
+        // provider is found in list, remove from list
         removalList.splice(removalIndex, 1);
       } else {
+        // provider is added to list for removal
         removalList.push(filteredProviders[index]._id);
       }
       this.setState({ filteredProviders, removalList });
@@ -101,10 +121,15 @@ class ProviderList extends React.Component {
 
   handleSelectAll = event => {
     let removalList = [];
+    // if select-all is checked, keep current removalList
+    // otherwise, removalList should be empty
     if (event.target.checked) removalList = [...this.state.removalList];
     let filteredProviders = this.state.filteredProviders.map(provider => {
+      // iterate through providers and select/unselect checkbox based on selectAll selection
       provider.checked = event.target.checked;
       const removalIndex = removalList.indexOf(provider._id);
+      // if select-all checkbox is selected and provider is not in removal list,
+      // add to removal list. Otherwise, no work needed as provider is already in list
       if (event.target.checked && removalIndex === -1) {
         removalList.push(provider._id);
       }
@@ -118,6 +143,7 @@ class ProviderList extends React.Component {
   };
 
   handleMultiRemove = () => {
+    // alert user if there are no providers to remove
     if (!this.state.removalList.length) {
       this.showAlert({
         message: 'No providers selected to remove!',
@@ -127,13 +153,13 @@ class ProviderList extends React.Component {
       providerSvc
         .post('/multiDelete', this.state.removalList)
         .then(() => {
+          // remove selected providers from directory
           const providers = this.state.providers.filter(provider => {
               return this.state.removalList.indexOf(provider._id) === -1;
             }),
-            filteredProviders = this.filterProvidersBySearch(
-              this.state.searchTerm,
-              providers
-            );
+            // filter providers by current search term
+            filteredProviders = this.filterProvidersBySearch(providers);
+          // on removal, reset select-all checkbox
           this.setState({
             providers,
             filteredProviders,
@@ -141,6 +167,7 @@ class ProviderList extends React.Component {
           });
         })
         .catch(() => {
+          // service failed, show alert
           this.showAlert({
             message: 'Failed to remove providers!',
             variant: 'danger'
@@ -155,7 +182,9 @@ class ProviderList extends React.Component {
       message: '',
       variant: ''
     };
+    // automatically show alert
     alert.show = true;
+    // automatic dismissal on alert, 3 seconds
     this.setState({ alert }, () => {
       window.setTimeout(() => {
         this.setState({ alert: defaultAlert });
@@ -166,15 +195,17 @@ class ProviderList extends React.Component {
   sortBySearch = searchTerm => {
     // Sort providers by selected field
     const filteredProviders = this.filterProvidersBySearch(
-        searchTerm,
-        this.state.providers
+        this.state.providers,
+        searchTerm
       ),
+      // reset field headers on search
       fields = this.state.fields.map(field => {
         field.toggle = false;
         field.className = 'fa-sort';
         return field;
       });
 
+    // reset select all checkbox and multi-removal list
     this.setState({
       fields,
       filteredProviders,
@@ -203,11 +234,12 @@ class ProviderList extends React.Component {
       return result;
     });
 
-    // create new fields array
+    // reset field headers
     let fields = this.state.fields.map((field, index) => {
       let toggle = null,
         className = 'fa-sort';
 
+      // found field being sorted on
       if (index === fieldIndex) {
         // Change sorting icon based on ascending/descending
         className = field.toggle ? 'fa-sort-up' : 'fa-sort-down';
@@ -223,30 +255,38 @@ class ProviderList extends React.Component {
     });
   };
 
-  filterProvidersBySearch = (searchTerm = '', providers = []) => {
+  filterProvidersBySearch = (
+    providers = [],
+    searchTerm = this.state.searchTerm
+  ) => {
+    // if no search term or providers, return given list
     if (!searchTerm.length || !providers.length) return [...providers];
+    // return providers that fulfill search term across all fields
     return providers.filter(provider => {
       let result = false;
-      this.state.fields.forEach(field => {
+      // check across all fields for search term
+      for (var field of this.state.fields) {
         if (provider[field.fieldName].toLowerCase().includes(searchTerm)) {
           result = true;
-          return;
+          break;
         }
-      });
+      }
       return result;
     });
   };
 
   render() {
-    // return an empty table if no provider data is given
+    // return an empty table if no fields were extracted from provider data
     let tableHeaders, tableBody;
     if (this.state.fields) {
+      // set up table headers with onClick for sorting by field
       tableHeaders = this.state.fields.map((field, index) => {
         return (
           <th
             scope="col"
             key={field.fieldName}
             onClick={() => this.sortByField(index)}
+            className="fieldHeaders"
           >
             {field.headerName}
             <i className={'fas ' + field.className}></i>
@@ -254,6 +294,7 @@ class ProviderList extends React.Component {
         );
       });
 
+      // create table data for each provider
       tableBody = this.state.filteredProviders.map((provider, index) => {
         return this.renderProvider(provider, index);
       });
@@ -263,12 +304,21 @@ class ProviderList extends React.Component {
       <>
         <div className="row">
           <div className="col">
-            <SearchBar
-              searchTerm={this.state.searchTerm}
-              searchCallback={this.sortBySearch}
-            />
+            <div className="form-group">
+              <label htmlFor="search">Search</label>
+              <input
+                type="text"
+                className="form-control"
+                id="search"
+                value={this.state.searchTerm}
+                onChange={e => {
+                  this.sortBySearch(e.target.value.toLowerCase());
+                }}
+              />
+            </div>
           </div>
         </div>
+        {/* alert component below search bar */}
         <AlertComponent alert={this.state.alert}></AlertComponent>
         <div id="providerList" className="row">
           <div className="col">
@@ -277,6 +327,7 @@ class ProviderList extends React.Component {
                 <tr>
                   <th className="text-center">
                     <div className="checkbox text-center">
+                      {/* select/deselect all checkbox */}
                       <input
                         type="checkbox"
                         onChange={this.handleSelectAll}
@@ -324,19 +375,16 @@ class ProviderList extends React.Component {
       <tr key={provider._id}>
         <td>
           <div className="checkbox text-center">
+            {/* create checkbox setting up for multi-removal selection on each provider */}
             <input
               type="checkbox"
-              checked={
-                this.state.removalList.indexOf(provider._id) !== -1
-                  ? true
-                  : false
-              }
+              checked={this.state.removalList.indexOf(provider._id) !== -1}
               onChange={event => this.handleCheckbox(index, event)}
             />
           </div>
         </td>
 
-        {/* Populate provider data */}
+        {/* Populate provider data across extractedd fields */}
         {this.state.fields.map(({ headerName, fieldName }) => {
           return (
             <td key={provider._id + '-' + headerName}>{provider[fieldName]}</td>
@@ -345,11 +393,12 @@ class ProviderList extends React.Component {
 
         <td>
           <div className="text-center">
+            {/* create 'X' button for immediate individual removal */}
             <button
               type="button"
               className="close"
               aria-label="Close"
-              onClick={() => this.removeIndividual(provider)}
+              onClick={() => this.removeIndividual(provider._id)}
             >
               <span aria-hidden="true">&times;</span>
             </button>

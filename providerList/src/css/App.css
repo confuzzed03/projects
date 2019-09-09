@@ -10,7 +10,7 @@ th i {
   padding-left: 10px;
 }
 
-th {
+th.fieldHeaders {
   cursor: pointer;
 }
 

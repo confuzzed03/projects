@@ -6,6 +6,7 @@ import camelCase from '../utility/camelCase';
 import '../css/CreateProvider.css';
 
 class CreateProvider extends React.Component {
+  // reset form when needed
   formDefaults = {
     modalShow: false,
     validated: false,
@@ -20,14 +21,15 @@ class CreateProvider extends React.Component {
     ...this.formDefaults
   };
 
+  // when modal is closed, reset form
   handleClose = () => {
     this.setState({ ...this.formDefaults });
   };
 
+  // remove any leading/trailing whitespace when entering input is finished
   onBlur = e => {
     const key = e.target.name;
     this.setState({
-      ...this.state,
       [key]: {
         ...this.state[key],
         value: e.target.value.trim()
@@ -37,10 +39,11 @@ class CreateProvider extends React.Component {
 
   onSubmit = e => {
     e.preventDefault();
-    // reset states before the validation procedure is run.
+    // remove any previouslydone validation before running new validation
     this.resetValidation();
-    // run the validation, and if it's good move on.
+    // run the validation, and move on
     if (this.isFormValid()) {
+      // create provider payload
       let newProvider = {
         last_name: camelCase(this.state.lastName.value),
         first_name: camelCase(this.state.firstName.value),
@@ -51,21 +54,20 @@ class CreateProvider extends React.Component {
       providerSvc
         .post('/create', newProvider)
         .then(response => {
+          // return any errors from response e.g. email already taken
           if (response.data.error) {
             let email = { ...this.state.email };
             email.isValid = false;
             email.message = response.data.error;
             this.setState({ email });
           } else {
+            // reset validation on modal and close
             this.setState({
-              ...this.state,
               modalShow: false,
               validated: false
             });
-            this.props.formSubmitCallback({
-              message: 'New provider has successfully been created!',
-              variant: 'success'
-            });
+            // pass new provider to callback on submit
+            this.props.formSubmitCallback();
           }
         })
         .catch(error => {
@@ -77,6 +79,7 @@ class CreateProvider extends React.Component {
   resetValidation = () => {
     const state = { ...this.state };
     Object.keys(state).forEach(key => {
+      // iterate through state and reset any validation
       if (state[key].hasOwnProperty('isValid')) {
         state[key].isValid = true;
         state[key].message = '';
@@ -85,21 +88,22 @@ class CreateProvider extends React.Component {
     this.setState(state);
   };
 
-  checkInput = (input, isAlpha = true) => {
-    let result = { ...input, value: input.value };
-    if (!isAlpha) {
-      if (!validator.isAlphanumeric(input.value)) {
-        result.isValid = false;
-        result.message = 'Please use only letters and numbers!';
-        return result;
-      }
-    } else if (!validator.isAlpha(input.value)) {
+  checkInput = input => {
+    let result = { ...input };
+    // required field
+    if (!input.value.length) {
+      result.isValid = false;
+      result.message = 'Please fill out this field!';
+      return result;
+    }
+    // check field is only using letters
+    if (!validator.isAlpha(input.value)) {
       result.isValid = false;
       result.message = 'Please use only letters!';
       return result;
     }
-
-    if (!validator.isLength(input.value, { min: 1, max: 50 })) {
+    // check max length
+    if (!validator.isLength(input.value, { max: 50 })) {
       result.isValid = false;
       result.message = 'Please keep within 1-50 characters!';
       return result;
@@ -115,13 +119,16 @@ class CreateProvider extends React.Component {
       specialty = { ...this.state.specialty },
       practice = { ...this.state.practice };
 
+    // run validation on name
     firstName = this.checkInput(firstName);
     lastName = this.checkInput(lastName);
 
+    // email validation
     if (!validator.isEmail(email.value)) {
       email.isValid = false;
       email.message = 'Not a valid email address';
     }
+    // specialty and practice name length validation
     if (!validator.isLength(specialty.value, { min: 0, max: 50 })) {
       specialty.isValid = false;
       specialty.message = 'Please keep within 1-50 characters!';
@@ -130,6 +137,7 @@ class CreateProvider extends React.Component {
       practice.isValid = false;
       practice.message = 'Please keep within 1-50 characters!';
     }
+    // if form is not valid, set validation on form
     if (
       !firstName.isValid ||
       !lastName.isValid ||
@@ -143,11 +151,24 @@ class CreateProvider extends React.Component {
       });
       return false;
     }
+    // form is valid
     return true;
   };
 
+  // show or hide modal
   handleModalShow = value => {
     this.setState({ modalShow: value });
+  };
+
+  // set value of field on state
+  handleOnChange = event => {
+    const value = {
+      ...this.state[event.target.name],
+      value: event.target.value
+    };
+    this.setState({
+      [event.target.name]: value
+    });
   };
 
   render() {
@@ -197,6 +218,8 @@ class CreateProvider extends React.Component {
                     type="text"
                     name="firstName"
                     placeholder="First name"
+                    value={this.state.firstName.value}
+                    onChange={this.handleOnChange}
                     onBlur={this.onBlur}
                     isInvalid={!firstName.isValid}
                   />
@@ -211,6 +234,8 @@ class CreateProvider extends React.Component {
                     name="lastName"
                     type="text"
                     placeholder="Last name"
+                    value={this.state.lastName.value}
+                    onChange={this.handleOnChange}
                     onBlur={this.onBlur}
                     isInvalid={!lastName.isValid}
                   />
@@ -224,9 +249,11 @@ class CreateProvider extends React.Component {
                   <Form.Label>Email address</Form.Label>
                   <Form.Control
                     required
-                    type="email"
+                    type="text"
                     name="email"
                     placeholder="Enter email"
+                    value={email.value}
+                    onChange={this.handleOnChange}
                     onBlur={this.onBlur}
                     isInvalid={!email.isValid}
                   />
@@ -247,6 +274,8 @@ class CreateProvider extends React.Component {
                     type="text"
                     name="specialty"
                     placeholder="Specialty"
+                    value={this.state.specialty.value}
+                    onChange={this.handleOnChange}
                     onBlur={this.onBlur}
                     isInvalid={!specialty.isValid}
                   />
@@ -262,6 +291,8 @@ class CreateProvider extends React.Component {
                     type="text"
                     name="practice"
                     placeholder="Practice"
+                    value={this.state.practice.value}
+                    onChange={this.handleOnChange}
                     onBlur={this.onBlur}
                     isInvalid={!practice.isValid}
                   />
