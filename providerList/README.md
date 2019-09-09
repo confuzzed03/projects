@@ -22,4 +22,4 @@ Once both are retrieved, run `npm start` on both.
 
 The port number on the client and backend service should be `3000` and `9000` respectively which is the default. Ensure the backend runs on port `9000`.
 
-Please see instructions on backend README as well.
+Please see instructions on backend README as well. Backend repo is located here: https://github.com/confuzzed03/ProviderService
