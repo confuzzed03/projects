@@ -1,7 +1,7 @@
 import React from 'react';
+import { Button } from 'react-bootstrap';
 import SearchBar from './SearchBar';
 import CreateProvider from './CreateProvider';
-import RemoveProvider from './RemoveProvider';
 import AlertComponent from './Alert';
 import providerSvc from '../api/providerSvc';
 import camelCase from '../utility/camelCase';
@@ -10,7 +10,7 @@ class ProviderList extends React.Component {
   constructor(props) {
     super(props);
     this.getProviders();
-    this.state = { alert: { show: false } };
+    this.state = { alert: { show: false }, removalList: [], checkAll: false };
   }
 
   getProviders = () => {
@@ -60,8 +60,8 @@ class ProviderList extends React.Component {
       })
       .catch(() => {
         this.showAlert({
-          alertMessage: 'Failed to remove provider!',
-          alertVariant: 'danger'
+          message: 'Failed to remove provider!',
+          variant: 'danger'
         });
       });
   };
@@ -69,6 +69,73 @@ class ProviderList extends React.Component {
   handleCreateProvider = alert => {
     this.getProviders();
     this.showAlert(alert);
+  };
+
+  handleCheckbox = (index, event) => {
+    let filteredProviders = [...this.state.filteredProviders];
+    if (index >= 0) {
+      filteredProviders[index] = {
+        ...filteredProviders[index],
+        checked: event.target.checked
+      };
+      const removalList = [...this.state.removalList],
+        removalIndex = removalList.indexOf(filteredProviders[index]._id);
+      if (removalIndex !== -1) {
+        removalList.splice(removalIndex, 1);
+      } else {
+        removalList.push(filteredProviders[index]._id);
+      }
+      this.setState({ filteredProviders, removalList });
+    }
+  };
+
+  handleSelectAll = event => {
+    let removalList = [];
+    if (event.target.checked) removalList = [...this.state.removalList];
+    let filteredProviders = this.state.filteredProviders.map(provider => {
+      provider.checked = event.target.checked;
+      const removalIndex = removalList.indexOf(provider._id);
+      if (event.target.checked) {
+        if (removalIndex === -1) {
+          removalList.push(provider._id);
+        }
+      }
+      return provider;
+    });
+    this.setState({
+      filteredProviders,
+      removalList,
+      checkAll: event.target.checked
+    });
+  };
+
+  handleMultiRemove = () => {
+    if (!this.state.removalList.length) {
+      this.showAlert({
+        message: 'No providers selected to remove!',
+        variant: 'warning'
+      });
+    } else {
+      debugger;
+      providerSvc
+        .post('/multiDelete', this.state.removalList)
+        .then(() => {
+          const providers = this.state.providers.filter(provider => {
+            return this.state.removalList.indexOf(provider._id) === -1;
+          });
+          this.setState({
+            providers,
+            filteredProviders: providers,
+            checkAll: false
+          });
+        })
+        .catch(() => {
+          this.showAlert({
+            message: 'Failed to remove provider!',
+            variant: 'danger'
+          });
+        });
+    }
   };
 
   showAlert = alert => {
@@ -106,7 +173,10 @@ class ProviderList extends React.Component {
 
     this.setState({
       fields,
-      filteredProviders
+      filteredProviders,
+      removalList: [],
+      checkAll: false,
+      searchTerm
     });
   };
 
@@ -168,8 +238,8 @@ class ProviderList extends React.Component {
         );
       });
 
-      tableBody = this.state.filteredProviders.map(provider => {
-        return this.renderProvider(provider);
+      tableBody = this.state.filteredProviders.map((provider, index) => {
+        return this.renderProvider(provider, index);
       });
     }
 
@@ -177,7 +247,10 @@ class ProviderList extends React.Component {
       <>
         <div className="row">
           <div className="col">
-            <SearchBar searchCallback={this.sortBySearch} />
+            <SearchBar
+              searchTerm={this.state.searchTerm}
+              searchCallback={this.sortBySearch}
+            />
           </div>
         </div>
         <AlertComponent alert={this.state.alert}></AlertComponent>
@@ -188,7 +261,11 @@ class ProviderList extends React.Component {
                 <tr>
                   <th className="text-center">
                     <div className="checkbox text-center">
-                      <input type="checkbox" />
+                      <input
+                        type="checkbox"
+                        onChange={this.handleSelectAll}
+                        checked={this.state.checkAll}
+                      />
                     </div>
                   </th>
 
@@ -216,7 +293,9 @@ class ProviderList extends React.Component {
           <div className="col">
             <div className="text-right">
               <CreateProvider formSubmitCallback={this.handleCreateProvider} />
-              <RemoveProvider />
+              <Button variant="danger" onClick={this.handleMultiRemove}>
+                Remove
+              </Button>
             </div>
           </div>
         </div>
@@ -224,12 +303,20 @@ class ProviderList extends React.Component {
     );
   }
 
-  renderProvider = provider => {
+  renderProvider = (provider, index) => {
     return (
       <tr key={provider._id}>
         <td>
           <div className="checkbox text-center">
-            <input type="checkbox" />
+            <input
+              type="checkbox"
+              checked={
+                this.state.removalList.indexOf(provider._id) !== -1
+                  ? true
+                  : false
+              }
+              onChange={event => this.handleCheckbox(index, event)}
+            />
           </div>
         </td>
 

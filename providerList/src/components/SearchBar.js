@@ -8,6 +8,7 @@ const SearchBar = props => {
         type="text"
         className="form-control"
         id="search"
+        value={props.searchTerm}
         onChange={e => props.searchCallback(e.target.value.toLowerCase())}
       />
     </div>
