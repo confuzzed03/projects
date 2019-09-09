@@ -10,7 +10,12 @@ class ProviderList extends React.Component {
   constructor(props) {
     super(props);
     this.getProviders();
-    this.state = { alert: { show: false }, removalList: [], checkAll: false };
+    this.state = {
+      alert: { show: false },
+      removalList: [],
+      checkAll: false,
+      searchTerm: ''
+    };
   }
 
   getProviders = () => {
@@ -34,10 +39,14 @@ class ProviderList extends React.Component {
             });
         }
 
+        const filteredProviders = this.filterProvidersBySearch(
+          this.state.searchTerm,
+          response.data
+        );
         this.setState({
           fields: fields,
           providers: response.data,
-          filteredProviders: response.data
+          filteredProviders
         });
       })
       .catch(error => {
@@ -51,11 +60,15 @@ class ProviderList extends React.Component {
       .delete(address)
       .then(() => {
         const providers = this.state.providers.filter(provider => {
-          return provider !== deletedProvider;
-        });
+            return provider !== deletedProvider;
+          }),
+          filteredProviders = this.filterProvidersBySearch(
+            this.state.searchTerm,
+            providers
+          );
         this.setState({
           providers,
-          filteredProviders: providers
+          filteredProviders
         });
       })
       .catch(() => {
@@ -74,10 +87,7 @@ class ProviderList extends React.Component {
   handleCheckbox = (index, event) => {
     let filteredProviders = [...this.state.filteredProviders];
     if (index >= 0) {
-      filteredProviders[index] = {
-        ...filteredProviders[index],
-        checked: event.target.checked
-      };
+      filteredProviders[index].checked = event.target.checked;
       const removalList = [...this.state.removalList],
         removalIndex = removalList.indexOf(filteredProviders[index]._id);
       if (removalIndex !== -1) {
@@ -95,10 +105,8 @@ class ProviderList extends React.Component {
     let filteredProviders = this.state.filteredProviders.map(provider => {
       provider.checked = event.target.checked;
       const removalIndex = removalList.indexOf(provider._id);
-      if (event.target.checked) {
-        if (removalIndex === -1) {
-          removalList.push(provider._id);
-        }
+      if (event.target.checked && removalIndex === -1) {
+        removalList.push(provider._id);
       }
       return provider;
     });
@@ -116,22 +124,25 @@ class ProviderList extends React.Component {
         variant: 'warning'
       });
     } else {
-      debugger;
       providerSvc
         .post('/multiDelete', this.state.removalList)
         .then(() => {
           const providers = this.state.providers.filter(provider => {
-            return this.state.removalList.indexOf(provider._id) === -1;
-          });
+              return this.state.removalList.indexOf(provider._id) === -1;
+            }),
+            filteredProviders = this.filterProvidersBySearch(
+              this.state.searchTerm,
+              providers
+            );
           this.setState({
             providers,
-            filteredProviders: providers,
+            filteredProviders,
             checkAll: false
           });
         })
         .catch(() => {
           this.showAlert({
-            message: 'Failed to remove provider!',
+            message: 'Failed to remove providers!',
             variant: 'danger'
           });
         });
@@ -154,22 +165,15 @@ class ProviderList extends React.Component {
 
   sortBySearch = searchTerm => {
     // Sort providers by selected field
-    const filteredProviders = this.state.providers.slice().filter(provider => {
-      let result = false;
-      this.state.fields.forEach(field => {
-        if (provider[field.fieldName].toLowerCase().includes(searchTerm)) {
-          result = true;
-          return;
-        }
+    const filteredProviders = this.filterProvidersBySearch(
+        searchTerm,
+        this.state.providers
+      ),
+      fields = this.state.fields.map(field => {
+        field.toggle = false;
+        field.className = 'fa-sort';
+        return field;
       });
-      return result;
-    });
-
-    const fields = this.state.fields.map(field => {
-      field.toggle = false;
-      field.className = 'fa-sort';
-      return field;
-    });
 
     this.setState({
       fields,
@@ -185,21 +189,19 @@ class ProviderList extends React.Component {
     let field = this.state.fields[fieldIndex];
 
     // Sort providers by selected field
-    let filteredProviders = this.state.filteredProviders
-      .slice()
-      .sort((a, b) => {
-        let result = 0;
+    let filteredProviders = [...this.state.filteredProviders].sort((a, b) => {
+      let result = 0;
 
-        // ascending, descending result respectively
-        if (a[field.fieldName] > b[field.fieldName]) result = 1;
-        else if (a[field.fieldName] < b[field.fieldName]) result = -1;
+      // ascending, descending result respectively
+      if (a[field.fieldName] > b[field.fieldName]) result = 1;
+      else if (a[field.fieldName] < b[field.fieldName]) result = -1;
 
-        // toggle indicates switch order
-        if (field.toggle) result *= -1;
+      // toggle indicates switch order
+      if (field.toggle) result *= -1;
 
-        //return field.toggle && a[field.fieldName] > b[field.fieldName] ? 1 : -1;
-        return result;
-      });
+      //return field.toggle && a[field.fieldName] > b[field.fieldName] ? 1 : -1;
+      return result;
+    });
 
     // create new fields array
     let fields = this.state.fields.map((field, index) => {
@@ -218,6 +220,20 @@ class ProviderList extends React.Component {
     this.setState({
       fields,
       filteredProviders
+    });
+  };
+
+  filterProvidersBySearch = (searchTerm = '', providers = []) => {
+    if (!searchTerm.length || !providers.length) return [...providers];
+    return providers.filter(provider => {
+      let result = false;
+      this.state.fields.forEach(field => {
+        if (provider[field.fieldName].toLowerCase().includes(searchTerm)) {
+          result = true;
+          return;
+        }
+      });
+      return result;
     });
   };
 
