@@ -18,7 +18,7 @@ The provider directory runs on a client and backend application.
 
 To run this application, both this client and the backend service need to be cloned.
 
-Once both are retrieved, run `npm start` on both.
+Once both are retrieved, run `node install;node app.js` on backend, then run `node install;npm start` on client.
 
 The port number on the client and backend service should be `3000` and `9000` respectively which is the default. Ensure the backend runs on port `9000`.
 
