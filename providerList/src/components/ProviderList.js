@@ -188,7 +188,7 @@ class ProviderList extends React.Component {
     this.setState({ alert }, () => {
       window.setTimeout(() => {
         this.setState({ alert: defaultAlert });
-      }, 3000);
+      }, 2500);
     });
   };
 

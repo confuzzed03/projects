@@ -9,10 +9,9 @@ class App extends React.Component {
         <div className="jumbotron">
           <h1 className="display-4">Provider Directory</h1>
           <p className="lead">
-            The table below provides a directory for providers. Each provider
-            has a first and last name, email, specialty, and practice. You may
-            add and delete providers. Click on a field header to sort by field
-            in ascending or descending order or search by any field name in the
+            The table below provides a directory for providers. You may add and
+            delete providers. Click on a field header to sort by field in
+            ascending or descending order or search by any field name in the
             search bar. You may also select multiple providers via the checkbox
             to delete. There is also a select/deselect all for quicker
             selection.
