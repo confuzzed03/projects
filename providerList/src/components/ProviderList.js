@@ -11,10 +11,14 @@ class ProviderList extends React.Component {
 
     // hide alert, initialize list of ID's to remove, select all value, and search term
     this.state = {
-      alert: { show: false },
+      fields: [],
+      providers: [],
+      filteredProviders: [],
       removalList: [],
+      searchTerm: '',
+      sortedFieldIndex: -1,
       checkAll: false,
-      searchTerm: ''
+      alert: { show: false }
     };
     // retrieve providers from service
     this.getProviders();
@@ -24,41 +28,56 @@ class ProviderList extends React.Component {
     providerSvc
       .get('/')
       .then(response => {
+        let fields = [],
+          filteredProviders = [];
+
         // if no providers, show alert
-        if (!response.data.length)
+        if (!response.data.length) {
           this.showAlert({
             message: 'No providers to show',
             variant: 'warning'
           });
+        } else {
+          // Extract fields from data as headers except for default mongoDB fields if fields haven't been created
+          if (!this.state.fields.length) {
+            fields = Object.keys(response.data[0])
+              .filter(field => {
+                return field !== '_id' && field !== '__v';
+              })
+              .map(field => {
+                // remove underlines and camel case fields
+                return {
+                  fieldName: field,
+                  headerName: camelCase(field),
+                  className: 'fa-sort',
+                  toggle: false
+                };
+              });
+          } else {
+            // use existing fields
+            fields = [...this.state.fields];
+          }
 
-        let fields = [];
-        // Extract fields from data as headers except for default mongoDB fields
-        if (response.data.length) {
-          fields = Object.keys(response.data[0])
-            .filter(field => {
-              return field !== '_id' && field !== '__v' ? true : false;
-            })
-            .map(field => {
-              // remove underlines and camel case fields
-              return {
-                fieldName: field,
-                headerName: camelCase(field),
-                className: 'fa-sort',
-                toggle: false
-              };
-            });
+          // filter by search term on providers
+          filteredProviders = this.filterProvidersBySearch(response.data);
         }
-
-        // filter by search term on providers
-        const filteredProviders = this.filterProvidersBySearch(response.data);
 
         // providers holds original copy of providers
         // filteredProviders is the manipulated version of providers via sorts and searches
-        this.setState({
-          fields,
-          filteredProviders,
-          providers: response.data
-        });
+        this.setState(
+          {
+            fields,
+            filteredProviders,
+            providers: response.data
+          },
+          () => {
+            // after filtering providers, sort by current selected field
+            const filteredProviders = this.sortByField(
+              this.state.sortedFieldIndex
+            );
+            this.setState({ filteredProviders });
+          }
+        );
       })
       .catch(error => {
         alert(error);
@@ -71,16 +90,7 @@ class ProviderList extends React.Component {
     providerSvc
       .delete(address)
       .then(() => {
-        // remove deleted provider from state
-        const providers = this.state.providers.filter(provider => {
-            return provider._id !== deletedId;
-          }),
-          // filter by search term on providers
-          filteredProviders = this.filterProvidersBySearch(providers);
-        this.setState({
-          providers,
-          filteredProviders
-        });
+        this.getProviders();
       })
       .catch(() => {
         // service failed, show alert
@@ -153,18 +163,21 @@ class ProviderList extends React.Component {
       providerSvc
         .post('/multiDelete', this.state.removalList)
         .then(() => {
-          // remove selected providers from directory
-          const providers = this.state.providers.filter(provider => {
-              return this.state.removalList.indexOf(provider._id) === -1;
-            }),
-            // filter providers by current search term
-            filteredProviders = this.filterProvidersBySearch(providers);
-          // on removal, reset select-all checkbox
-          this.setState({
-            providers,
-            filteredProviders,
-            checkAll: false
-          });
+          // retrieve providers and filter by current search and sort field
+          this.getProviders();
+          // deselect select all box
+          this.setState(
+            {
+              checkAll: false
+            },
+            () => {
+              // after filtering providers, sort by current selected field
+              const filteredProviders = this.sortByField(
+                this.state.sortedFieldIndex
+              );
+              this.setState({ filteredProviders });
+            }
+          );
         })
         .catch(() => {
           // service failed, show alert
@@ -204,7 +217,6 @@ class ProviderList extends React.Component {
         field.className = 'fa-sort';
         return field;
       });
-
     // reset select all checkbox and multi-removal list
     this.setState({
       fields,
@@ -215,9 +227,10 @@ class ProviderList extends React.Component {
     });
   };
 
-  // table header on-click handler for sorting by field
   sortByField = fieldIndex => {
-    let field = this.state.fields[fieldIndex];
+    // if invalid index passed, return current filtered providers
+    if (fieldIndex < 0) return [...this.state.filteredProviders];
+    let field = { ...this.state.fields[fieldIndex] };
 
     // Sort providers by selected field
     let filteredProviders = [...this.state.filteredProviders].sort((a, b) => {
@@ -228,31 +241,56 @@ class ProviderList extends React.Component {
       else if (a[field.fieldName] < b[field.fieldName]) result = -1;
 
       // toggle indicates switch order
-      if (field.toggle) result *= -1;
+      if (!field.toggle) result *= -1;
 
       //return field.toggle && a[field.fieldName] > b[field.fieldName] ? 1 : -1;
       return result;
     });
 
-    // reset field headers
-    let fields = this.state.fields.map((field, index) => {
-      let toggle = null,
-        className = 'fa-sort';
+    return filteredProviders;
+  };
 
-      // found field being sorted on
-      if (index === fieldIndex) {
-        // Change sorting icon based on ascending/descending
-        className = field.toggle ? 'fa-sort-up' : 'fa-sort-down';
-        toggle = !field.toggle;
+  // table header on-click handler for sorting by field
+  handleSortByField = fieldIndex => {
+    // if invalid index passed, return current filtered providers
+    if (fieldIndex < 0) return [...this.state.filteredProviders];
+
+    // gather all fields, selected field, and current sorted field index
+    let fields = [...this.state.fields];
+    const selectedField = { ...fields[fieldIndex] },
+      sortedFieldIndex = this.state.sortedFieldIndex;
+
+    // if current sorted field index is not the selected field to sort, reset current sorted field
+    if (sortedFieldIndex >= 0 && fieldIndex !== sortedFieldIndex) {
+      fields[sortedFieldIndex] = {
+        ...fields[sortedFieldIndex],
+        className: 'fa-sort',
+        toggle: null
+      };
+    }
+
+    // determine sort icon for selected field header based on ascending/descending toggle
+    const className = selectedField.toggle ? 'fa-sort-up' : 'fa-sort-down',
+      toggle = !selectedField.toggle;
+
+    // prepare selected field for sort
+    fields[fieldIndex] = {
+      ...selectedField,
+      className,
+      toggle
+    };
+
+    this.setState(
+      {
+        fields,
+        sortedFieldIndex: fieldIndex
+      },
+      () => {
+        // after filtering providers, sort by current selected field
+        const filteredProviders = this.sortByField(fieldIndex);
+        this.setState({ filteredProviders });
       }
-      // reset last sorted field
-      return Object.assign({}, field, { className, toggle });
-    });
-
-    this.setState({
-      fields,
-      filteredProviders
-    });
+    );
   };
 
   filterProvidersBySearch = (
@@ -285,7 +323,7 @@ class ProviderList extends React.Component {
           <th
             scope="col"
             key={field.fieldName}
-            onClick={() => this.sortByField(index)}
+            onClick={() => this.handleSortByField(index)}
             className="fieldHeaders"
           >
             {field.headerName}
