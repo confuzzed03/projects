@@ -166,18 +166,13 @@ class ProviderList extends React.Component {
           // retrieve providers and filter by current search and sort field
           this.getProviders();
           // deselect select all box
-          this.setState(
-            {
-              checkAll: false
-            },
-            () => {
-              // after filtering providers, sort by current selected field
-              const filteredProviders = this.sortByField(
-                this.state.sortedFieldIndex
-              );
-              this.setState({ filteredProviders });
-            }
-          );
+          this.setState({ checkAll: false }, () => {
+            // after filtering providers, sort by current selected field
+            const filteredProviders = this.sortByField(
+              this.state.sortedFieldIndex
+            );
+            this.setState({ filteredProviders });
+          });
         })
         .catch(() => {
           // service failed, show alert
@@ -280,17 +275,11 @@ class ProviderList extends React.Component {
       toggle
     };
 
-    this.setState(
-      {
-        fields,
-        sortedFieldIndex: fieldIndex
-      },
-      () => {
-        // after filtering providers, sort by current selected field
-        const filteredProviders = this.sortByField(fieldIndex);
-        this.setState({ filteredProviders });
-      }
-    );
+    this.setState({ fields, sortedFieldIndex: fieldIndex }, () => {
+      // after filtering providers, sort by current selected field
+      const filteredProviders = this.sortByField(fieldIndex);
+      this.setState({ filteredProviders });
+    });
   };
 
   filterProvidersBySearch = (
