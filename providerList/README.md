@@ -23,3 +23,11 @@ Once both are retrieved, run `node install;node app.js` on backend, then run `no
 The port number on the client and backend service should be `3000` and `9000` respectively which is the default. Ensure the backend runs on port `9000`.
 
 Please see instructions on backend README as well. Backend repo is located here: https://github.com/confuzzed03/ProviderService
+
+### Thoughts
+
+On removal and creation of providers, the application automatically makes GET calls to retrieve an updated list of providers to ensure consistency. This is good for the scenario of concurrent users of the application updating the same data.
+
+On the other hand, this can be optimized to instead manually update the state of the application rather than rely on the GET call to update the providers list on creation/removal. This would boost performance and reduce the number of GET calls to the backend. However, this does not ensure consistency as changes in the data outside of the current user will not update unless refreshed.
+
+I have a commit transitioning the removal/creation of providers to service calls instead of manually filtering providers and manipulating state directly. That is what I'm referring to above.
